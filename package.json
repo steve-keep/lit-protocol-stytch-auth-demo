@@ -1,0 +1,26 @@
+{
+  "name": "lit-auth-demo",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.ts",
+  "type": "module",
+  "scripts": {
+    "start": "tsx index.ts"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@lit-protocol/constants": "3.0.6",
+    "@lit-protocol/lit-auth-client": "3.0.6",
+    "@lit-protocol/lit-node-client-nodejs": "3.0.6",
+    "@lit-protocol/pkp-ethers": "3.0.6",
+    "@types/node": "20.7.2",
+    "@types/prompts": "2.4.4",
+    "dotenv": "^16.3.1",
+    "ethers": "5.7.2",
+    "prompts": "2.4.2",
+    "stytch": "9.0.2",
+    "tsx": "3.13.0",
+    "typescript": "5.1.6"
+  }
+}
