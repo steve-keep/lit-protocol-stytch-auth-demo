@@ -9,19 +9,6 @@ import "./App.css";
 import { LogOutButton } from "./components/logout";
 import { useState } from "react";
 
-// this code will be run on the node
-const litActionCode = `
-const go = async () => {
-
-  const userId = "user-test-cf821b3a-5673-4da6-9e58-dfeb04c48ecc";
-  const match = userId !== Lit.Auth.authMethodContexts?.[0]?.userId;
-  
-  Lit.Actions.setResponse({response: match ? "no match" : "match"})
-};
-
-go();
-`;
-
 const runLitAction = async (accessToken: string) => {
   // you need an AuthSig to auth with the nodes
   // this will get it from MetaMask or any browser wallet
@@ -30,7 +17,7 @@ const runLitAction = async (accessToken: string) => {
   const litNodeClient = new LitNodeClient({ litNetwork: "cayenne" });
   await litNodeClient.connect();
   const results = await litNodeClient.executeJs({
-    code: litActionCode,
+    ipfsId: "QmNWuUwwNQokxKHb2XPa91w1YgGTDT4Kvv4jsy3cXhxaqS",
     authSig,
     authMethods: [
       {

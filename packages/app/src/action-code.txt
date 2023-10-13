@@ -1,0 +1,9 @@
+const go = async () => {
+
+  const userId = "user-test-cf821b3a-5673-4da6-9e58-dfeb04c48ecc";
+  const match = userId !== Lit.Auth.authMethodContexts?.[0]?.userId;
+  
+  Lit.Actions.setResponse({response: match ? "no match" : "match"})
+};
+
+go();
