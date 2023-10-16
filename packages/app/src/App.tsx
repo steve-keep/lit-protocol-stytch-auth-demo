@@ -2,7 +2,12 @@ import {
   checkAndSignAuthMessage,
   LitNodeClient,
 } from "@lit-protocol/lit-node-client";
-import { useStytchUser, StytchLogin, useStytch } from "@stytch/react";
+import {
+  useStytchUser,
+  StytchLogin,
+  useStytch,
+  useStytchSession,
+} from "@stytch/react";
 import { Products } from "@stytch/vanilla-js";
 
 import "./App.css";
@@ -41,6 +46,10 @@ function App() {
   const [results, setResults] = useState<string>("");
   const { user } = useStytchUser();
   const stytchClient = useStytch();
+  const { session } = useStytchSession();
+
+  // Can be used to check the factors on the session
+  console.log(session?.authentication_factors.length);
 
   const config = {
     products: [Products.emailMagicLinks, Products.oauth],
