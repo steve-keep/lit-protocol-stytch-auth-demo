@@ -29,3 +29,4 @@ If you are developing a production application, we recommend updating the config
 ## Resources
 
 https://github.com/LIT-Protocol/lit-pkp-auth-demo
+https://developer.litprotocol.com/v3/sdk/authentication/session-sigs/auth-methods/add-remove-auth-methods/
