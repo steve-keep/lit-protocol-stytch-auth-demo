@@ -18,6 +18,7 @@ import useAuthenticate from "./hooks/use-authenticate";
 import { SessionSigs } from "@lit-protocol/types";
 import { PKPEthersWallet } from "@lit-protocol/pkp-ethers";
 import { LitContracts } from "@lit-protocol/contracts-sdk";
+import { litAuthClient } from "./utils/lit";
 
 const code = `const go = async () => {
   const tokenId = Lit.Actions.pubkeyToTokenId({ publicKey });
@@ -126,13 +127,13 @@ function App() {
   }, [authMethod, currentAccount, initSession]);
 
   // This should be used to sign messages
-  console.log(currentAccount);
+  console.log("currentAccount:: ", currentAccount);
 
   // This should be used to sign messages
   console.log(`sessionSigs:: `, sessionSigs);
 
   // Can be used to check the factors on the session
-  console.log(session?.authentication_factors.length);
+  console.log("authentication_factors:: ", session?.authentication_factors);
 
   const config = {
     products: [Products.emailMagicLinks, Products.oauth],
@@ -227,9 +228,28 @@ function App() {
     }
   };
 
+  const handleClaim = async () => {
+    const tokens = await stytchClient.session.getTokens();
+
+    if (tokens?.session_jwt) {
+      const claimResp = await litAuthClient.litNodeClient.claimKeyId({
+        relayApiKey: import.meta.env.VITE_LIT_RELAY_API_KEY,
+        authMethod: {
+          accessToken: tokens?.session_jwt,
+          authMethodType: 9, // Stytch
+        },
+      });
+      setResults(JSON.stringify(claimResp, null, 2));
+      setSignatures("");
+    }
+  };
+
   return (
     <>
       <div className="card">
+        <p>
+          <button onClick={handleClaim}>Mint My PKP</button>
+        </p>
         <p>
           <button onClick={handleRunLitAction}>Check Rules</button>
         </p>

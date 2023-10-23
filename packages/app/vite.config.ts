@@ -8,4 +8,7 @@ export default defineConfig({
     "process.env.NODE_DEBUG": "false",
     "window.global": "globalThis",
   },
+  server: {
+    cors: false,
+  },
 });
