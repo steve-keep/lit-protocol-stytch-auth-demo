@@ -50,7 +50,11 @@ const code = `const go = async () => {
 
 go();`;
 
-const runLitAction = async (accessToken: string, sessionSigs: SessionSigs) => {
+const runLitAction = async (
+  accessToken: string,
+  sessionSigs: SessionSigs,
+  publicKey: string
+) => {
   // you need an AuthSig to auth with the nodes
   // this will get it from MetaMask or any browser wallet
   //const authSig = await checkAndSignAuthMessage({ chain: "ethereum" });
@@ -70,7 +74,7 @@ const runLitAction = async (accessToken: string, sessionSigs: SessionSigs) => {
     jsParams: {
       // this is the string "Hello World" for testing
       toSign: [72, 101, 108, 108, 111, 32, 87, 111, 114, 108, 100],
-      publicKey: pkpJson.publicKey,
+      publicKey,
       sigName: "sig1",
     },
   });
@@ -122,6 +126,9 @@ function App() {
   }, [authMethod, currentAccount, initSession]);
 
   // This should be used to sign messages
+  console.log(currentAccount);
+
+  // This should be used to sign messages
   console.log(sessionSigs);
 
   // Can be used to check the factors on the session
@@ -148,8 +155,13 @@ function App() {
 
   const handleRunLitAction = async () => {
     const tokens = await stytchClient.session.getTokens();
-    if (tokens?.session_jwt && sessionSigs) {
-      const res = await runLitAction(tokens?.session_jwt, sessionSigs);
+
+    if (tokens?.session_jwt && sessionSigs && currentAccount?.publicKey) {
+      const res = await runLitAction(
+        tokens?.session_jwt,
+        sessionSigs,
+        currentAccount.publicKey
+      );
       setResults(res);
     }
   };

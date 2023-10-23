@@ -1,8 +1,0 @@
-{
-  "tokenId": {
-    "type": "BigNumber",
-    "hex": "0xc079289c57ead1ad82278e1ba28295a34a1a6af14425d32d24c78dd7775a1393"
-  },
-  "publicKey": "0x043fb3cf0c5d1d23b11b3e45f74748188a1bc7d06ea3a0f59e16fb16a8c743b9a563d6f882032b157c12cba905bdf49824059d6e6448e35bb8a99daa065600866b",
-  "ethAddress": "0xbDb616E9535FD5d01f3401F01ba903b7Ad350BAf"
-}
