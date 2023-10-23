@@ -30,3 +30,6 @@ If you are developing a production application, we recommend updating the config
 
 https://github.com/LIT-Protocol/lit-pkp-auth-demo
 https://developer.litprotocol.com/v3/sdk/authentication/session-sigs/auth-methods/add-remove-auth-methods/
+https://github.com/LIT-Protocol/LitNodeContracts/blob/main/contracts/PKPPermissions.sol
+https://chronicle-faucet-app.vercel.app/
+https://lit-protocol.calderaexplorer.xyz/tx/0x5af0af84d89250022bb35af919ebc0c8f5e95e11e8f5d672d26f7ef36daf1e49

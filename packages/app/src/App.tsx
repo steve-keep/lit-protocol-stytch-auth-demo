@@ -204,22 +204,76 @@ function App() {
         sessionSigs,
         currentAccount.publicKey
       );
-      setResults(res);
-      setSignatures(sig);
+      setResults(JSON.stringify(res, null, 2));
+      setSignatures(JSON.stringify(sig, null, 2));
+    }
+  };
+
+  const handleRunTx = async () => {
+    const tokens = await stytchClient.session.getTokens();
+
+    if (tokens?.session_jwt && sessionSigs && currentAccount?.publicKey) {
+      const pkpWallet = new PKPEthersWallet({
+        controllerSessionSigs: sessionSigs,
+        litActionCode: code,
+        litNetwork: "cayenne",
+        pkpPubKey: currentAccount.publicKey,
+      });
+      await pkpWallet.init();
+
+      const litContracts = new LitContracts({
+        signer: pkpWallet,
+      });
+      await litContracts.connect();
+
+      const authMethod = {
+        authMethodType: 9,
+        id: ethers.utils.keccak256(ethers.utils.toUtf8Bytes(`test`)),
+        userPubkey: ethers.utils.keccak256(ethers.utils.toUtf8Bytes(``)),
+      };
+      const mockTransaction =
+        await litContracts.pkpPermissionsContract.write.populateTransaction.addPermittedAuthMethod(
+          currentAccount.tokenId,
+          authMethod,
+          []
+        );
+
+      console.log("mockTransaction:: ", mockTransaction);
+
+      // Then, estimate gas on the unsigned transaction
+      const gas = await litContracts.signer.estimateGas(mockTransaction);
+
+      console.log("gas:: ", gas);
+
+      const transaction =
+        await litContracts.pkpPermissionsContract.write.addPermittedAuthMethod(
+          currentAccount.tokenId,
+          authMethod,
+          [],
+          { gasLimit: gas }
+        );
+
+      setResults(JSON.stringify(transaction, null, 2));
+      setSignatures("");
     }
   };
 
   return (
     <>
       <div className="card">
-        <button onClick={handleRunLitAction}>executeJs</button>
+        <p>
+          <button onClick={handleRunLitAction}>Check Rules</button>
+        </p>
+        <p>
+          <button onClick={handleRunTx}>Add Auth Method</button>
+        </p>
         <p>
           <LogOutButton />
         </p>
         <h3>Response</h3>
-        <pre id="json">{JSON.stringify(results, null, 2)}</pre>
+        <pre id="json">{results}</pre>
         <h3>Signatures</h3>
-        <pre id="json">{JSON.stringify(signatures, null, 2)}</pre>
+        <pre id="json">{signatures}</pre>
       </div>
     </>
   );

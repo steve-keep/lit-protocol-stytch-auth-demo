@@ -42,6 +42,9 @@
 }
 
 #json {
+  max-width: 80vw;
   text-align: left;
   text-wrap: wrap;
+  overflow: scroll;
+  background-color: rgb(23, 23, 23);
 }
