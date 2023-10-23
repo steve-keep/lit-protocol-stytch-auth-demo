@@ -172,7 +172,7 @@ function App() {
 
       const authMethod = {
         authMethodType: 9,
-        id: ethers.utils.keccak256(ethers.utils.toUtf8Bytes(`test`)),
+        id: ethers.utils.keccak256(ethers.utils.toUtf8Bytes(`test`)), // This would be the id of the alternative auth method held in Stytch
         userPubkey: ethers.utils.keccak256(ethers.utils.toUtf8Bytes(``)),
       };
       const mockTransaction =
@@ -208,6 +208,11 @@ function App() {
       setSignatures(JSON.stringify(sig, null, 2));
     }
   };
+
+  console.log(
+    "userId to add:",
+    ethers.utils.keccak256(ethers.utils.toUtf8Bytes(`test`))
+  );
 
   const handleRunTx = async () => {
     const tokens = await stytchClient.session.getTokens();
