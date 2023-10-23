@@ -1,8 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  LitNodeClient,
-  checkAndSignAuthMessage,
-} from "@lit-protocol/lit-node-client";
+import { LitNodeClient } from "@lit-protocol/lit-node-client";
 import {
   useStytchUser,
   StytchLogin,
@@ -10,10 +7,9 @@ import {
   useStytchSession,
 } from "@stytch/react";
 import { Products } from "@stytch/vanilla-js";
+import { ethers } from "ethers";
 
 import { LogOutButton } from "./components/logout";
-
-import pkpJson from "./pkp.json";
 
 import "./App.css";
 import useSession from "./hooks/use-session";
@@ -72,18 +68,20 @@ const runLitAction = async (
       },
     ],
     jsParams: {
-      // this is the string "Hello World" for testing
-      toSign: [72, 101, 108, 108, 111, 32, 87, 111, 114, 108, 100],
+      toSign: ethers.utils.arrayify(
+        ethers.utils.keccak256(new TextEncoder().encode("Hello World"))
+      ),
       publicKey,
       sigName: "sig1",
     },
   });
   console.log(results);
-  return results.response;
+  return [results.response, results.signatures];
 };
 
 function App() {
   const [results, setResults] = useState<string>("");
+  const [signatures, setSignatures] = useState<string>("");
   const { user } = useStytchUser();
   const stytchClient = useStytch();
   const { session } = useStytchSession();
@@ -129,7 +127,7 @@ function App() {
   console.log(currentAccount);
 
   // This should be used to sign messages
-  console.log(sessionSigs);
+  console.log(`sessionSigs:: `, sessionSigs);
 
   // Can be used to check the factors on the session
   console.log(session?.authentication_factors.length);
@@ -157,30 +155,27 @@ function App() {
     const tokens = await stytchClient.session.getTokens();
 
     if (tokens?.session_jwt && sessionSigs && currentAccount?.publicKey) {
-      const res = await runLitAction(
+      const [res, sig] = await runLitAction(
         tokens?.session_jwt,
         sessionSigs,
         currentAccount.publicKey
       );
       setResults(res);
+      setSignatures(sig);
     }
-  };
-
-  const handlePermitAddress = () => {
-    //0x4Adffe82A2EE7468551cC375BA464912Ea652bd6
-    console.log("0x4adffe82a2ee7468551cc375ba464912ea652bd6");
   };
 
   return (
     <>
       <div className="card">
         <button onClick={handleRunLitAction}>executeJs</button>
-        <button onClick={handlePermitAddress}>permitAddress</button>
         <p>
           <LogOutButton />
         </p>
-
-        <pre id="json">{results}</pre>
+        <h3>Response</h3>
+        <pre id="json">{JSON.stringify(results, null, 2)}</pre>
+        <h3>Signatures</h3>
+        <pre id="json">{JSON.stringify(signatures, null, 2)}</pre>
       </div>
     </>
   );

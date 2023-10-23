@@ -26,6 +26,9 @@ dependencies:
   '@stytch/vanilla-js':
     specifier: ^3.0.1
     version: 3.0.1(@babel/core@7.23.2)(csstype@3.1.2)(react-is@18.2.0)
+  ethers:
+    specifier: ^5.5.1
+    version: 5.7.2
   react:
     specifier: ^18.2.0
     version: 18.2.0
