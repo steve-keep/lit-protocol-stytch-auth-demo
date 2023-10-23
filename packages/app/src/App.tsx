@@ -1,6 +1,7 @@
+import { useEffect, useState } from "react";
 import {
-  checkAndSignAuthMessage,
   LitNodeClient,
+  checkAndSignAuthMessage,
 } from "@lit-protocol/lit-node-client";
 import {
   useStytchUser,
@@ -10,20 +11,56 @@ import {
 } from "@stytch/react";
 import { Products } from "@stytch/vanilla-js";
 
-import "./App.css";
 import { LogOutButton } from "./components/logout";
-import { useState } from "react";
 
-const runLitAction = async (accessToken: string) => {
+import pkpJson from "./pkp.json";
+
+import "./App.css";
+import useSession from "./hooks/use-session";
+import useAccounts from "./hooks/use-account";
+import useAuthenticate from "./hooks/use-authenticate";
+import { SessionSigs } from "@lit-protocol/types";
+
+const code = `const go = async () => {
+  const tokenId = Lit.Actions.pubkeyToTokenId({ publicKey });
+  const userId = new TextEncoder("utf-8").encode(Lit.Auth.authMethodContexts?.[0]?.userId);
+
+  const response = {
+    tokenId,
+    auth: Lit.Auth,
+    toSign,
+    publicKey,
+    sigName,
+    sigShare: await Lit.Actions.signEcdsa({ toSign, publicKey, sigName }),
+    permittedActions: await Lit.Actions.getPermittedActions({tokenId}),
+    permittedAddresses: await Lit.Actions.getPermittedAddresses({tokenId}),
+    permittedAuthMethods: await Lit.Actions.getPermittedAuthMethods({tokenId}),
+  };
+
+  const permittedAuthMethodScopes = await Lit.Actions.getPermittedAuthMethodScopes({
+    tokenId,
+    authMethodType: "9",
+    userId,
+    maxScopeId: 10
+  });
+  response.permittedAuthMethodScopes = permittedAuthMethodScopes;
+
+  Lit.Actions.setResponse({ response: JSON.stringify(response, null, 2) });
+};
+
+go();`;
+
+const runLitAction = async (accessToken: string, sessionSigs: SessionSigs) => {
   // you need an AuthSig to auth with the nodes
   // this will get it from MetaMask or any browser wallet
-  const authSig = await checkAndSignAuthMessage({ chain: "ethereum" });
+  //const authSig = await checkAndSignAuthMessage({ chain: "ethereum" });
 
   const litNodeClient = new LitNodeClient({ litNetwork: "cayenne" });
   await litNodeClient.connect();
   const results = await litNodeClient.executeJs({
-    ipfsId: "QmNW37vn2zujd1Xxk5VB5Jp1uWbjCJaj5j6boWzAU5RyAy",
-    authSig,
+    //ipfsId: "QmNW37vn2zujd1Xxk5VB5Jp1uWbjCJaj5j6boWzAU5RyAy",
+    code: code,
+    sessionSigs,
     authMethods: [
       {
         accessToken,
@@ -33,8 +70,7 @@ const runLitAction = async (accessToken: string) => {
     jsParams: {
       // this is the string "Hello World" for testing
       toSign: [72, 101, 108, 108, 111, 32, 87, 111, 114, 108, 100],
-      publicKey:
-        "0x04dc9bbda8b0f99dd9252e2cdd9af08bf7dff898bc96f0eb9a30eeb3b08bfb1b5098f1f627c1c186c49888a947a34dd14d24de74e22c097510e7bc06d587b6026c",
+      publicKey: pkpJson.publicKey,
       sigName: "sig1",
     },
   });
@@ -47,6 +83,46 @@ function App() {
   const { user } = useStytchUser();
   const stytchClient = useStytch();
   const { session } = useStytchSession();
+
+  const { authMethod, authWithStytch } = useAuthenticate();
+  const { initSession, sessionSigs } = useSession();
+  const { currentAccount, fetchAccounts } = useAccounts();
+
+  // 1. watch for login to stytch
+  useEffect(() => {
+    const go = async () => {
+      const tokens = await stytchClient.session.getTokens();
+      console.log(tokens);
+      if (tokens?.session_jwt) {
+        console.log(
+          "Logged in to Stytch, authenticating with lit using stytch session"
+        );
+        authWithStytch(tokens.session_jwt, session?.user_id);
+      }
+    };
+    go();
+  }, [stytchClient, session, authWithStytch]);
+
+  // 2. watch for authMethod to be set from useAuthenticate
+  useEffect(() => {
+    // If user is authenticated, fetch accounts
+    if (authMethod) {
+      console.log("fetching accounts");
+      fetchAccounts(authMethod);
+    }
+  }, [authMethod, fetchAccounts]);
+
+  // 3. watch for currentAccount to be set from useAccounts
+  useEffect(() => {
+    // If user is authenticated and has at least one account, initialize session
+    if (authMethod && currentAccount) {
+      console.log("initializing session");
+      initSession(authMethod, currentAccount);
+    }
+  }, [authMethod, currentAccount, initSession]);
+
+  // This should be used to sign messages
+  console.log(sessionSigs);
 
   // Can be used to check the factors on the session
   console.log(session?.authentication_factors.length);
@@ -72,20 +148,27 @@ function App() {
 
   const handleRunLitAction = async () => {
     const tokens = await stytchClient.session.getTokens();
-    if (tokens?.session_jwt) {
-      const res = await runLitAction(tokens?.session_jwt);
+    if (tokens?.session_jwt && sessionSigs) {
+      const res = await runLitAction(tokens?.session_jwt, sessionSigs);
       setResults(res);
     }
+  };
+
+  const handlePermitAddress = () => {
+    //0x4Adffe82A2EE7468551cC375BA464912Ea652bd6
+    console.log("0x4adffe82a2ee7468551cc375ba464912ea652bd6");
   };
 
   return (
     <>
       <div className="card">
         <button onClick={handleRunLitAction}>executeJs</button>
+        <button onClick={handlePermitAddress}>permitAddress</button>
         <p>
           <LogOutButton />
         </p>
-        <p>{results}</p>
+
+        <pre id="json">{results}</pre>
       </div>
     </>
   );

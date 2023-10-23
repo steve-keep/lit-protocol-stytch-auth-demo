@@ -40,3 +40,8 @@
 .read-the-docs {
   color: #888;
 }
+
+#json {
+  text-align: left;
+  text-wrap: wrap;
+}

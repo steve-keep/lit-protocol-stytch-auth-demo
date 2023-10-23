@@ -5,7 +5,8 @@
   "main": "index.ts",
   "type": "module",
   "scripts": {
-    "start": "tsx src/index.ts"
+    "claim": "tsx src/claim.ts",
+    "permit": "tsx src/permit.ts"
   },
   "author": "",
   "license": "MIT",
