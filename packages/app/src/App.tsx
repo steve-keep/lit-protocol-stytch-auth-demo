@@ -157,48 +157,6 @@ function App() {
     const tokens = await stytchClient.session.getTokens();
 
     if (tokens?.session_jwt && sessionSigs && currentAccount?.publicKey) {
-      const pkpWallet = new PKPEthersWallet({
-        controllerSessionSigs: sessionSigs,
-        litActionCode: code,
-        litNetwork: "cayenne",
-        pkpPubKey: currentAccount.publicKey,
-      });
-      await pkpWallet.init();
-
-      const litContracts = new LitContracts({
-        signer: pkpWallet,
-      });
-      await litContracts.connect();
-
-      const authMethod = {
-        authMethodType: 9,
-        id: ethers.utils.keccak256(ethers.utils.toUtf8Bytes(`test`)), // This would be the id of the alternative auth method held in Stytch
-        userPubkey: ethers.utils.keccak256(ethers.utils.toUtf8Bytes(``)),
-      };
-      const mockTransaction =
-        await litContracts.pkpPermissionsContract.write.populateTransaction.addPermittedAuthMethod(
-          currentAccount.tokenId,
-          authMethod,
-          []
-        );
-
-      console.log("mockTransaction:: ", mockTransaction);
-
-      // Then, estimate gas on the unsigned transaction
-      const gas = await litContracts.signer.estimateGas(mockTransaction);
-
-      console.log("gas:: ", gas);
-
-      const transaction =
-        await litContracts.pkpPermissionsContract.write.addPermittedAuthMethod(
-          currentAccount.tokenId,
-          authMethod,
-          [],
-          { gasLimit: gas }
-        );
-
-      console.log(transaction);
-
       const [res, sig] = await runLitAction(
         tokens?.session_jwt,
         sessionSigs,
@@ -220,6 +178,12 @@ function App() {
     if (tokens?.session_jwt && sessionSigs && currentAccount?.publicKey) {
       const pkpWallet = new PKPEthersWallet({
         controllerSessionSigs: sessionSigs,
+        controllerAuthMethods: [
+          {
+            accessToken: tokens?.session_jwt,
+            authMethodType: 9, // Stytch
+          },
+        ],
         litActionCode: code,
         litNetwork: "cayenne",
         pkpPubKey: currentAccount.publicKey,
