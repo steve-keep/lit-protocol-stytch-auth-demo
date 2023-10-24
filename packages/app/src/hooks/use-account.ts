@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { AuthMethod } from "@lit-protocol/types";
-import { getPKPs } from "../utils/lit";
+import { getPKPs, mintPKP } from "../utils/lit";
 import { IRelayPKP } from "@lit-protocol/types";
 
 export default function useAccounts() {
@@ -22,8 +22,9 @@ export default function useAccounts() {
         // console.log('fetchAccounts pkps: ', myPKPs);
         setAccounts(myPKPs);
         // If only one PKP, set as current account
-        if (myPKPs.length === 1) {
-          setCurrentAccount(myPKPs[0]);
+        console.log("fetchAccounts pkps: ", myPKPs);
+        if (myPKPs.length >= 1) {
+          setCurrentAccount(myPKPs[myPKPs.length - 1]);
         }
       } catch (err: unknown) {
         if (err instanceof Error) setError(err);
@@ -37,27 +38,27 @@ export default function useAccounts() {
   /**
    * Mint a new PKP for current auth method
    */
-  // const createAccount = useCallback(
-  //   async (authMethod: AuthMethod): Promise<void> => {
-  //     setLoading(true);
-  //     setError(undefined);
-  //     try {
-  //       const newPKP = await mintPKP(authMethod);
-  //       // console.log('createAccount pkp: ', newPKP);
-  //       setAccounts((prev) => [...prev, newPKP]);
-  //       setCurrentAccount(newPKP);
-  //     } catch (err) {
-  //       setError(err);
-  //     } finally {
-  //       setLoading(false);
-  //     }
-  //   },
-  //   []
-  // );
+  const createAccount = useCallback(
+    async (authMethod: AuthMethod): Promise<void> => {
+      setLoading(true);
+      setError(undefined);
+      try {
+        const newPKP = await mintPKP(authMethod);
+        console.log("createAccount pkp: ", newPKP);
+        setAccounts((prev) => [...prev, newPKP]);
+        setCurrentAccount(newPKP);
+      } catch (err: unknown) {
+        console.log(err);
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
 
   return {
     fetchAccounts,
-    // createAccount,
+    createAccount,
     setCurrentAccount,
     accounts,
     currentAccount,

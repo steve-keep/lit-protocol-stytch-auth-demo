@@ -82,11 +82,11 @@ const publicKey = await session.computePublicKeyFromAuthMethod(authMethod);
 console.log("local public key computed: ", publicKey);
 
 // Claim the PKP
-const claimResp = await session.claimKeyId({
-  authMethod,
-});
-console.log("claim response public key: ", claimResp.pubkey);
+// const claimResp = await session.claimKeyId({
+//   authMethod,
+// });
+// console.log("claim response public key: ", claimResp.pubkey);
 
 // Check the PKP Claim
-//const pkpInfo = await session.fetchPKPsThroughRelayer(authMethod);
-//console.log(pkpInfo);
+const pkpInfo = await session.fetchPKPsThroughRelayer(authMethod);
+console.log(pkpInfo);

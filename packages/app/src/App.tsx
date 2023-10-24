@@ -18,7 +18,6 @@ import useAuthenticate from "./hooks/use-authenticate";
 import { SessionSigs } from "@lit-protocol/types";
 import { PKPEthersWallet } from "@lit-protocol/pkp-ethers";
 import { LitContracts } from "@lit-protocol/contracts-sdk";
-import { litAuthClient } from "./utils/lit";
 
 const code = `const go = async () => {
   const tokenId = Lit.Actions.pubkeyToTokenId({ publicKey });
@@ -91,7 +90,7 @@ function App() {
 
   const { authMethod, authWithStytch } = useAuthenticate();
   const { initSession, sessionSigs } = useSession();
-  const { currentAccount, fetchAccounts } = useAccounts();
+  const { currentAccount, fetchAccounts, createAccount } = useAccounts();
 
   // 1. watch for login to stytch
   useEffect(() => {
@@ -174,17 +173,9 @@ function App() {
   );
 
   const handleRunTx = async () => {
-    const tokens = await stytchClient.session.getTokens();
-
-    if (tokens?.session_jwt && sessionSigs && currentAccount?.publicKey) {
+    if (sessionSigs && currentAccount?.publicKey) {
       const pkpWallet = new PKPEthersWallet({
         controllerSessionSigs: sessionSigs,
-        controllerAuthMethods: [
-          {
-            accessToken: tokens?.session_jwt,
-            authMethodType: 9, // Stytch
-          },
-        ],
         litActionCode: code,
         litNetwork: "cayenne",
         pkpPubKey: currentAccount.publicKey,
@@ -196,31 +187,31 @@ function App() {
       });
       await litContracts.connect();
 
-      const authMethod = {
+      const newAuthMethod = {
         authMethodType: 9,
-        id: ethers.utils.keccak256(ethers.utils.toUtf8Bytes(`test`)),
-        userPubkey: ethers.utils.keccak256(ethers.utils.toUtf8Bytes(``)),
+        id: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("test")),
+        userPubkey: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("0x")),
       };
-      const mockTransaction =
-        await litContracts.pkpPermissionsContract.write.populateTransaction.addPermittedAuthMethod(
-          currentAccount.tokenId,
-          authMethod,
-          []
-        );
+      // const mockTransaction =
+      //   await litContracts.pkpPermissionsContract.write.populateTransaction.addPermittedAuthMethod(
+      //     currentAccount.tokenId,
+      //     newAuthMethod,
+      //     []
+      //   );
 
-      console.log("mockTransaction:: ", mockTransaction);
+      // console.log("mockTransaction:: ", mockTransaction);
 
-      // Then, estimate gas on the unsigned transaction
-      const gas = await litContracts.signer.estimateGas(mockTransaction);
+      // // Then, estimate gas on the unsigned transaction
+      // const gas = await litContracts.signer.estimateGas(mockTransaction);
 
-      console.log("gas:: ", gas);
+      // console.log("gas:: ", gas);
 
       const transaction =
         await litContracts.pkpPermissionsContract.write.addPermittedAuthMethod(
           currentAccount.tokenId,
-          authMethod,
-          [],
-          { gasLimit: gas }
+          newAuthMethod,
+          []
+          // { gasLimit: gas }
         );
 
       setResults(JSON.stringify(transaction, null, 2));
@@ -228,19 +219,13 @@ function App() {
     }
   };
 
-  const handleClaim = async () => {
-    const tokens = await stytchClient.session.getTokens();
+  console.log(authMethod);
 
-    if (tokens?.session_jwt) {
-      const claimResp = await litAuthClient.litNodeClient.claimKeyId({
-        relayApiKey: import.meta.env.VITE_LIT_RELAY_API_KEY,
-        authMethod: {
-          accessToken: tokens?.session_jwt,
-          authMethodType: 9, // Stytch
-        },
-      });
-      setResults(JSON.stringify(claimResp, null, 2));
-      setSignatures("");
+  const handleClaim = async () => {
+    if (authMethod) {
+      console.log("minting PKP");
+      await createAccount(authMethod);
+      console.log("finished minting PKP");
     }
   };
 
