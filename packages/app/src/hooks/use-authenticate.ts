@@ -10,7 +10,7 @@ export default function useAuthenticate() {
   /**
    * Authenticate with Stytch
    */
-  const authWithStytch = useCallback(
+  const authWithLitUsingStytch = useCallback(
     async (accessToken: string, userId?: string): Promise<void> => {
       setLoading(true);
       setError(undefined);
@@ -36,7 +36,7 @@ export default function useAuthenticate() {
   );
 
   return {
-    authWithStytch,
+    authWithLitUsingStytch,
     authMethod,
     loading,
     error,

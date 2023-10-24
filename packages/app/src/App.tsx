@@ -88,7 +88,7 @@ function App() {
   const stytchClient = useStytch();
   const { session } = useStytchSession();
 
-  const { authMethod, authWithStytch } = useAuthenticate();
+  const { authMethod, authWithLitUsingStytch } = useAuthenticate();
   const { initSession, sessionSigs } = useSession();
   const { currentAccount, fetchAccounts, createAccount } = useAccounts();
 
@@ -101,11 +101,11 @@ function App() {
         console.log(
           "Logged in to Stytch, authenticating with lit using stytch session"
         );
-        authWithStytch(tokens.session_jwt, session?.user_id);
+        authWithLitUsingStytch(tokens.session_jwt, session?.user_id);
       }
     };
     go();
-  }, [stytchClient, session, authWithStytch]);
+  }, [stytchClient, session, authWithLitUsingStytch]);
 
   // 2. watch for authMethod to be set from useAuthenticate
   useEffect(() => {
