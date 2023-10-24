@@ -1,0 +1,28 @@
+const go = async () => {
+  const tokenId = Lit.Actions.pubkeyToTokenId({ publicKey });
+  const userId = new TextEncoder("utf-8").encode(Lit.Auth.authMethodContexts?.[0]?.userId);
+
+  const response = {
+    tokenId,
+    auth: Lit.Auth,
+    toSign,
+    publicKey,
+    sigName,
+    sigShare: await Lit.Actions.signEcdsa({ toSign, publicKey, sigName }),
+    permittedActions: await Lit.Actions.getPermittedActions({tokenId}),
+    permittedAddresses: await Lit.Actions.getPermittedAddresses({tokenId}),
+    permittedAuthMethods: await Lit.Actions.getPermittedAuthMethods({tokenId}),
+  };
+
+  const permittedAuthMethodScopes = await Lit.Actions.getPermittedAuthMethodScopes({
+    tokenId,
+    authMethodType: "9",
+    userId,
+    maxScopeId: 10
+  });
+  response.permittedAuthMethodScopes = permittedAuthMethodScopes;
+
+  Lit.Actions.setResponse({ response: JSON.stringify(response, null, 2) });
+};
+
+go();

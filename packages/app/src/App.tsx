@@ -172,6 +172,56 @@ function App() {
     ethers.utils.keccak256(ethers.utils.toUtf8Bytes(`test`))
   );
 
+  const addPermittedAction = async () => {
+    if (sessionSigs && currentAccount?.publicKey) {
+      const pkpWallet = new PKPEthersWallet({
+        controllerSessionSigs: sessionSigs,
+        litActionCode: code,
+        litNetwork: "cayenne",
+        pkpPubKey: currentAccount.publicKey,
+      });
+      await pkpWallet.init();
+
+      const litContracts = new LitContracts({
+        signer: pkpWallet,
+      });
+      await litContracts.connect();
+
+      const mockTransaction =
+        await litContracts.pkpPermissionsContract.write.populateTransaction.addPermittedAction(
+          currentAccount.tokenId,
+          ethers.utils.keccak256(
+            ethers.utils.toUtf8Bytes(
+              "Qmf7m55osrpTjV4QxmtLBZwfAKG7jqqSyA27r3sAw8ia8L"
+            )
+          ),
+          [1, 2]
+        );
+
+      console.log("mockTransaction:: ", mockTransaction);
+
+      // Then, estimate gas on the unsigned transaction
+      const gas = await litContracts.signer.estimateGas(mockTransaction);
+
+      console.log("gas:: ", gas);
+
+      const transaction =
+        await litContracts.pkpPermissionsContract.write.addPermittedAction(
+          currentAccount.tokenId,
+          ethers.utils.keccak256(
+            ethers.utils.toUtf8Bytes(
+              "Qmf7m55osrpTjV4QxmtLBZwfAKG7jqqSyA27r3sAw8ia8L"
+            )
+          ),
+          [1],
+          { gasLimit: gas }
+        );
+
+      setResults(JSON.stringify(transaction, null, 2));
+      setSignatures("");
+    }
+  };
+
   const handleRunTx = async () => {
     if (sessionSigs && currentAccount?.publicKey) {
       const pkpWallet = new PKPEthersWallet({
@@ -223,7 +273,7 @@ function App() {
 
   const handleClaim = async () => {
     if (authMethod) {
-      console.log("minting PKP");
+      console.log("minting PKP: ", authMethod);
       await createAccount(authMethod);
       console.log("finished minting PKP");
     }
@@ -240,6 +290,9 @@ function App() {
         </p>
         <p>
           <button onClick={handleRunTx}>Add Auth Method</button>
+        </p>
+        <p>
+          <button onClick={addPermittedAction}>Add Permitted Action</button>
         </p>
         <p>
           <LogOutButton />
