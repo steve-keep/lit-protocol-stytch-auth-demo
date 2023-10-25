@@ -2,10 +2,15 @@ import { LitAuthClient } from "@lit-protocol/lit-auth-client";
 import { AuthMethodType, ProviderType } from "@lit-protocol/constants";
 import {
   AuthMethod,
+  ClaimRequest,
+  ClaimResult,
+  ClientClaimProcessor,
   GetSessionSigsProps,
   IRelayPKP,
   SessionSigs,
 } from "@lit-protocol/types";
+import { LitContracts } from "@lit-protocol/contracts-sdk";
+import { ethers } from "ethers";
 
 export const DOMAIN = process.env.NEXT_PUBLIC_DOMAIN || "localhost";
 export const ORIGIN =
@@ -87,15 +92,81 @@ export async function getPKPs(authMethod: AuthMethod): Promise<IRelayPKP[]> {
  * Mint a new PKP for current auth method
  */
 export async function mintPKP(authMethod: AuthMethod): Promise<IRelayPKP> {
+  // const pKey = ethers.Wallet.createRandom();
+  // console.log(pKey.address);
+  // console.log(pKey.privateKey);
+
   const provider = getProviderByAuthMethod(authMethod);
   if (!provider) throw new Error("provider undefined");
 
-  const txHash = await provider.mintPKPThroughRelayer(authMethod);
+  const authMethodId = await provider.getAuthMethodId(authMethod);
 
-  const response = await provider.relay.pollRequestUntilTerminalState(txHash);
+  const claimArgs = {
+    permittedAddresses: [],
+    permittedAddressScopes: [],
+    keyType: ethers.BigNumber.from("2"),
+    permittedAuthMethodIds: [authMethodId],
+    permittedAuthMethodTypes: [AuthMethodType.StytchOtp],
+    permittedAuthMethodPubkeys: [],
+    permittedAuthMethodScopes: [[ethers.BigNumber.from("2")]],
+    permittedIpfsCIDs: [
+      ethers.utils.toUtf8Bytes(import.meta.env.VITE_ACTION_CODE_IPFS_ID),
+    ],
+    permittedIpfsCIDScopes: [[ethers.BigNumber.from("1")]],
+    addPkpEthAddressAsPermittedAddress: false,
+    sendPkpToItself: false,
+  };
+
+  console.log("claimArgs: ", claimArgs);
+
+  const claimReq: ClaimRequest<ClientClaimProcessor> = {
+    authMethod, // provide an auth method to claim a key Identifier mapped to the given auth method
+    signer: new ethers.Wallet(
+      import.meta.env.VITE_ETH_PRIVATE_KEY,
+      new ethers.providers.JsonRpcProvider(
+        "https://chain-rpc.litprotocol.com/http"
+      )
+    ),
+    mintCallback: async (claimRes: ClaimResult<ClientClaimProcessor>) => {
+      const litContracts = new LitContracts({ signer: claimRes.signer });
+      await litContracts.connect();
+
+      const claimMaterial = {
+        keyType: ethers.BigNumber.from("2"),
+        derivedKeyId: ethers.utils.keccak256(
+          ethers.utils.toUtf8Bytes(claimRes.derivedKeyId)
+        ),
+        signatures: claimRes.signatures,
+      };
+
+      console.log("claimMaterial: ", claimMaterial);
+      const res =
+        await litContracts.pkpHelperContract.write.claimAndMintNextAndAddAuthMethods(
+          claimMaterial,
+          claimArgs,
+          {
+            gasPrice: ethers.utils.parseUnits("0.001", "gwei"),
+            gasLimit: 400000,
+          }
+        );
+      console.log(res);
+      return res.hash;
+    },
+  };
+  const res = await provider.claimKeyId(claimReq);
+
+  console.log("mint tx hash: ", res.mintTx);
+  console.log("pkp public key: ", res.pubkey);
+
+  console.log(res);
+
+  const response = await provider.relay.pollRequestUntilTerminalState(
+    res.mintTx
+  );
   if (response.status !== "Succeeded") {
     throw new Error("Minting failed");
   }
+
   const newPKP: IRelayPKP = {
     tokenId: response.pkpTokenId ?? "",
     publicKey: response.pkpPublicKey ?? "",
