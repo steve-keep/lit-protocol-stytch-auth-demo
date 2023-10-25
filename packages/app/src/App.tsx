@@ -214,7 +214,7 @@ function App() {
             )
           ),
           [1],
-          { gasLimit: gas }
+          { gasPrice: ethers.utils.parseUnits("0.001", "gwei"), gasLimit: gas }
         );
 
       setResults(JSON.stringify(transaction, null, 2));

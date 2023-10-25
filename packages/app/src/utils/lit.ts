@@ -11,6 +11,7 @@ import {
 } from "@lit-protocol/types";
 import { LitContracts } from "@lit-protocol/contracts-sdk";
 import { ethers } from "ethers";
+import { PKPHelper } from "@lit-protocol/contracts-sdk/src/abis/PKPHelper.sol/PKPHelper";
 
 export const DOMAIN = process.env.NEXT_PUBLIC_DOMAIN || "localhost";
 export const ORIGIN =
@@ -101,13 +102,13 @@ export async function mintPKP(authMethod: AuthMethod): Promise<IRelayPKP> {
 
   const authMethodId = await provider.getAuthMethodId(authMethod);
 
-  const claimArgs = {
+  const claimArgs: PKPHelper.AuthMethodDataStruct = {
     permittedAddresses: [],
     permittedAddressScopes: [],
     keyType: ethers.BigNumber.from("2"),
     permittedAuthMethodIds: [authMethodId],
     permittedAuthMethodTypes: [AuthMethodType.StytchOtp],
-    permittedAuthMethodPubkeys: [],
+    permittedAuthMethodPubkeys: ["0x"],
     permittedAuthMethodScopes: [[ethers.BigNumber.from("2")]],
     permittedIpfsCIDs: [
       ethers.utils.toUtf8Bytes(import.meta.env.VITE_ACTION_CODE_IPFS_ID),
@@ -141,7 +142,7 @@ export async function mintPKP(authMethod: AuthMethod): Promise<IRelayPKP> {
 
       console.log("claimMaterial: ", claimMaterial);
       const res =
-        await litContracts.pkpHelperContract.write.claimAndMintNextAndAddAuthMethods(
+        await litContracts.pkpHelperContract.write.claimAndMintNextAndAddAuthMethodsWithTypes(
           claimMaterial,
           claimArgs,
           {
