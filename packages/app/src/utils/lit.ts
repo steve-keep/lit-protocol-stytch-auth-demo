@@ -12,6 +12,7 @@ import {
 import { LitContracts } from "@lit-protocol/contracts-sdk";
 import { ethers } from "ethers";
 import { PKPHelper } from "@lit-protocol/contracts-sdk/src/abis/PKPHelper.sol/PKPHelper";
+import { decode } from "bs58";
 
 export const DOMAIN = process.env.NEXT_PUBLIC_DOMAIN || "localhost";
 export const ORIGIN =
@@ -101,21 +102,20 @@ export async function mintPKP(authMethod: AuthMethod): Promise<IRelayPKP> {
   if (!provider) throw new Error("provider undefined");
 
   const authMethodId = await provider.getAuthMethodId(authMethod);
+  const ipfsId = decode(import.meta.env.VITE_ACTION_CODE_IPFS_ID);
 
   const claimArgs: PKPHelper.AuthMethodDataStruct = {
-    permittedAddresses: [],
-    permittedAddressScopes: [],
-    keyType: ethers.BigNumber.from("2"),
-    permittedAuthMethodIds: [authMethodId],
-    permittedAuthMethodTypes: [AuthMethodType.StytchOtp],
-    permittedAuthMethodPubkeys: ["0x"],
-    permittedAuthMethodScopes: [[ethers.BigNumber.from("2")]],
-    permittedIpfsCIDs: [
-      ethers.utils.toUtf8Bytes(import.meta.env.VITE_ACTION_CODE_IPFS_ID),
-    ],
+    permittedAddresses: [], //address[] permittedAddresses;
+    permittedAddressScopes: [], //uint256[][] permittedAddressScopes;
+    keyType: ethers.BigNumber.from("2"), //uint256 keyType;
+    permittedAuthMethodIds: [authMethodId], //bytes[] permittedAuthMethodIds;
+    permittedAuthMethodTypes: [AuthMethodType.StytchOtp], //uint256[] permittedAuthMethodTypes;
+    permittedAuthMethodPubkeys: ["0x"], //bytes[] permittedAuthMethodPubkeys;
+    permittedAuthMethodScopes: [[ethers.BigNumber.from("1")]], //uint256[][] permittedAuthMethodScopes;
+    permittedIpfsCIDs: [`0x${Buffer.from(ipfsId).toString("hex")}`],
     permittedIpfsCIDScopes: [[ethers.BigNumber.from("1")]],
-    addPkpEthAddressAsPermittedAddress: false,
-    sendPkpToItself: false,
+    addPkpEthAddressAsPermittedAddress: false, //bool addPkpEthAddressAsPermittedAddress;
+    sendPkpToItself: true, //bool sendPkpToItself;
   };
 
   console.log("claimArgs: ", claimArgs);
@@ -134,20 +134,17 @@ export async function mintPKP(authMethod: AuthMethod): Promise<IRelayPKP> {
 
       const claimMaterial = {
         keyType: ethers.BigNumber.from("2"),
-        derivedKeyId: ethers.utils.keccak256(
-          ethers.utils.toUtf8Bytes(claimRes.derivedKeyId)
-        ),
+        derivedKeyId: `0x${claimRes.derivedKeyId}`,
         signatures: claimRes.signatures,
       };
 
       console.log("claimMaterial: ", claimMaterial);
       const res =
-        await litContracts.pkpHelperContract.write.claimAndMintNextAndAddAuthMethodsWithTypes(
+        await litContracts.pkpHelperContract.write.claimAndMintNextAndAddAuthMethods(
           claimMaterial,
           claimArgs,
           {
-            gasPrice: ethers.utils.parseUnits("0.001", "gwei"),
-            gasLimit: 400000,
+            value: ethers.utils.parseUnits("1", "wei"),
           }
         );
       console.log(res);

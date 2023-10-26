@@ -60,8 +60,8 @@ const runLitAction = async (
   const litNodeClient = new LitNodeClient({ litNetwork: "cayenne" });
   await litNodeClient.connect();
   const results = await litNodeClient.executeJs({
-    //ipfsId: "QmNW37vn2zujd1Xxk5VB5Jp1uWbjCJaj5j6boWzAU5RyAy",
-    code: code,
+    ipfsId: import.meta.env.VITE_ACTION_CODE_IPFS_ID,
+    // code: code,
     sessionSigs,
     authMethods: [
       {
