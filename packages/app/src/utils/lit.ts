@@ -119,7 +119,7 @@ export async function addPermittedAuthMethod(
     await litContracts.pkpPermissionsContract.write.populateTransaction.addPermittedAuthMethod(
       pkp.tokenId,
       newAuthMethod,
-      []
+      [ethers.BigNumber.from("2")]
     );
 
   console.log("mockTransaction:: ", mockTransaction);
