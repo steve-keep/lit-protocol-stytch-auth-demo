@@ -16,37 +16,7 @@ import useSession from "./hooks/use-session";
 import useAccounts from "./hooks/use-account";
 import useAuthenticate from "./hooks/use-authenticate";
 import { SessionSigs } from "@lit-protocol/types";
-import { PKPEthersWallet } from "@lit-protocol/pkp-ethers";
-import { LitContracts } from "@lit-protocol/contracts-sdk";
-
-const code = `const go = async () => {
-  const tokenId = Lit.Actions.pubkeyToTokenId({ publicKey });
-  const userId = new TextEncoder("utf-8").encode(Lit.Auth.authMethodContexts?.[0]?.userId);
-
-  const response = {
-    tokenId,
-    auth: Lit.Auth,
-    toSign,
-    publicKey,
-    sigName,
-    sigShare: await Lit.Actions.signEcdsa({ toSign, publicKey, sigName }),
-    permittedActions: await Lit.Actions.getPermittedActions({tokenId}),
-    permittedAddresses: await Lit.Actions.getPermittedAddresses({tokenId}),
-    permittedAuthMethods: await Lit.Actions.getPermittedAuthMethods({tokenId}),
-  };
-
-  const permittedAuthMethodScopes = await Lit.Actions.getPermittedAuthMethodScopes({
-    tokenId,
-    authMethodType: "9",
-    userId,
-    maxScopeId: 10
-  });
-  response.permittedAuthMethodScopes = permittedAuthMethodScopes;
-
-  Lit.Actions.setResponse({ response: JSON.stringify(response, null, 2) });
-};
-
-go();`;
+import { addPermittedAuthMethod } from "./utils/lit";
 
 const runLitAction = async (
   accessToken: string,
@@ -172,97 +142,12 @@ function App() {
     ethers.utils.keccak256(ethers.utils.toUtf8Bytes(`test`))
   );
 
-  const addPermittedAction = async () => {
-    if (sessionSigs && currentAccount?.publicKey) {
-      const pkpWallet = new PKPEthersWallet({
-        controllerSessionSigs: sessionSigs,
-        litActionCode: code,
-        litNetwork: "cayenne",
-        pkpPubKey: currentAccount.publicKey,
-      });
-      await pkpWallet.init();
-
-      const litContracts = new LitContracts({
-        signer: pkpWallet,
-      });
-      await litContracts.connect();
-
-      const mockTransaction =
-        await litContracts.pkpPermissionsContract.write.populateTransaction.addPermittedAction(
-          currentAccount.tokenId,
-          ethers.utils.keccak256(
-            ethers.utils.toUtf8Bytes(
-              "Qmf7m55osrpTjV4QxmtLBZwfAKG7jqqSyA27r3sAw8ia8L"
-            )
-          ),
-          [1, 2]
-        );
-
-      console.log("mockTransaction:: ", mockTransaction);
-
-      // Then, estimate gas on the unsigned transaction
-      const gas = await litContracts.signer.estimateGas(mockTransaction);
-
-      console.log("gas:: ", gas);
-
-      const transaction =
-        await litContracts.pkpPermissionsContract.write.addPermittedAction(
-          currentAccount.tokenId,
-          ethers.utils.keccak256(
-            ethers.utils.toUtf8Bytes(
-              "Qmf7m55osrpTjV4QxmtLBZwfAKG7jqqSyA27r3sAw8ia8L"
-            )
-          ),
-          [1],
-          { gasPrice: ethers.utils.parseUnits("0.001", "gwei"), gasLimit: gas }
-        );
-
-      setResults(JSON.stringify(transaction, null, 2));
-      setSignatures("");
-    }
-  };
-
   const handleRunTx = async () => {
     if (sessionSigs && currentAccount?.publicKey) {
-      const pkpWallet = new PKPEthersWallet({
-        controllerSessionSigs: sessionSigs,
-        litActionCode: code,
-        litNetwork: "cayenne",
-        pkpPubKey: currentAccount.publicKey,
-      });
-      await pkpWallet.init();
-
-      const litContracts = new LitContracts({
-        signer: pkpWallet,
-      });
-      await litContracts.connect();
-
-      const newAuthMethod = {
-        authMethodType: 9,
-        id: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("test")),
-        userPubkey: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("0x")),
-      };
-      // const mockTransaction =
-      //   await litContracts.pkpPermissionsContract.write.populateTransaction.addPermittedAuthMethod(
-      //     currentAccount.tokenId,
-      //     newAuthMethod,
-      //     []
-      //   );
-
-      // console.log("mockTransaction:: ", mockTransaction);
-
-      // // Then, estimate gas on the unsigned transaction
-      // const gas = await litContracts.signer.estimateGas(mockTransaction);
-
-      // console.log("gas:: ", gas);
-
-      const transaction =
-        await litContracts.pkpPermissionsContract.write.addPermittedAuthMethod(
-          currentAccount.tokenId,
-          newAuthMethod,
-          []
-          // { gasLimit: gas }
-        );
+      const transaction = await addPermittedAuthMethod(
+        sessionSigs,
+        currentAccount
+      );
 
       setResults(JSON.stringify(transaction, null, 2));
       setSignatures("");
@@ -290,9 +175,6 @@ function App() {
         </p>
         <p>
           <button onClick={handleRunTx}>Add Auth Method</button>
-        </p>
-        <p>
-          <button onClick={addPermittedAction}>Add Permitted Action</button>
         </p>
         <p>
           <LogOutButton />

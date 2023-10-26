@@ -13,6 +13,8 @@ import { LitContracts } from "@lit-protocol/contracts-sdk";
 import { ethers } from "ethers";
 import { PKPHelper } from "@lit-protocol/contracts-sdk/src/abis/PKPHelper.sol/PKPHelper";
 import { decode } from "bs58";
+import { PKPEthersWallet } from "@lit-protocol/pkp-ethers";
+import { LibPKPPermissionsStorage } from "@lit-protocol/contracts-sdk/src/abis/PKPPermissions.sol/PKPPermissions";
 
 export const DOMAIN = process.env.NEXT_PUBLIC_DOMAIN || "localhost";
 export const ORIGIN =
@@ -88,6 +90,51 @@ export async function getPKPs(authMethod: AuthMethod): Promise<IRelayPKP[]> {
   if (!provider) throw new Error("provider undefined");
   const allPKPs = await provider?.fetchPKPsThroughRelayer(authMethod);
   return allPKPs;
+}
+
+export async function addPermittedAuthMethod(
+  sessionSigs: SessionSigs,
+  pkp: IRelayPKP
+) {
+  const pkpWallet = new PKPEthersWallet({
+    controllerSessionSigs: sessionSigs,
+    litActionIPFS: import.meta.env.VITE_ACTION_CODE_IPFS_ID,
+    litNetwork: "cayenne",
+    pkpPubKey: pkp.publicKey,
+  });
+  console.log("pkpWallet.address::", pkpWallet.address);
+  await pkpWallet.init();
+
+  const litContracts = new LitContracts({
+    signer: pkpWallet,
+  });
+  await litContracts.connect();
+
+  const newAuthMethod: LibPKPPermissionsStorage.AuthMethodStruct = {
+    authMethodType: AuthMethodType.StytchOtp,
+    id: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("test")),
+    userPubkey: "0x",
+  };
+  const mockTransaction =
+    await litContracts.pkpPermissionsContract.write.populateTransaction.addPermittedAuthMethod(
+      pkp.tokenId,
+      newAuthMethod,
+      []
+    );
+
+  console.log("mockTransaction:: ", mockTransaction);
+
+  // Then, estimate gas on the unsigned transaction
+  const gas = await litContracts.signer.estimateGas(mockTransaction);
+
+  console.log("gas:: ", gas);
+
+  return await litContracts.pkpPermissionsContract.write.addPermittedAuthMethod(
+    pkp.tokenId,
+    newAuthMethod,
+    [ethers.BigNumber.from("2")],
+    { gasLimit: gas }
+  );
 }
 
 /**
