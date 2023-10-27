@@ -5,6 +5,9 @@ settings:
   excludeLinksFromLockfile: false
 
 dependencies:
+  '@ethersproject/transactions':
+    specifier: ^5.7.0
+    version: 5.7.0
   '@lit-protocol/auth-helpers':
     specifier: 3.0.14
     version: 3.0.14(ethers@5.7.2)
@@ -44,6 +47,9 @@ dependencies:
   react-dom:
     specifier: ^18.2.0
     version: 18.2.0(react@18.2.0)
+  siwe:
+    specifier: ^2.1.4
+    version: 2.1.4(ethers@5.7.2)
 
 devDependencies:
   '@types/react':

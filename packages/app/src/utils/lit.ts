@@ -2,6 +2,7 @@ import { LitAuthClient } from "@lit-protocol/lit-auth-client";
 import { AuthMethodType, ProviderType } from "@lit-protocol/constants";
 import {
   AuthMethod,
+  AuthSig,
   ClaimRequest,
   ClaimResult,
   ClientClaimProcessor,
@@ -11,10 +12,11 @@ import {
 } from "@lit-protocol/types";
 import { LitContracts } from "@lit-protocol/contracts-sdk";
 import { ethers } from "ethers";
+import { PKPEthersWallet } from "@lit-protocol/pkp-ethers";
 import { PKPHelper } from "@lit-protocol/contracts-sdk/src/abis/PKPHelper.sol/PKPHelper";
 import { decode } from "bs58";
-import { PKPEthersWallet } from "@lit-protocol/pkp-ethers";
 import { LibPKPPermissionsStorage } from "@lit-protocol/contracts-sdk/src/abis/PKPPermissions.sol/PKPPermissions";
+import { SiweMessage } from "siwe";
 
 export const DOMAIN = process.env.NEXT_PUBLIC_DOMAIN || "localhost";
 export const ORIGIN =
@@ -92,16 +94,49 @@ export async function getPKPs(authMethod: AuthMethod): Promise<IRelayPKP[]> {
   return allPKPs;
 }
 
+export async function runLitAction(
+  authMethod: AuthMethod,
+  pkp: IRelayPKP,
+  tx?: string
+) {
+  const litNodeClient = new LitNodeClient({ litNetwork: "cayenne" });
+  await litNodeClient.connect();
+
+  const toSign = tx ?? "Hello World";
+  const results = await litNodeClient.executeJs({
+    authSig: await constructAuthSig(),
+    ipfsId: import.meta.env.VITE_ACTION_CODE_IPFS_ID,
+    authMethods: [
+      {
+        accessToken: authMethod.accessToken,
+        authMethodType: AuthMethodType.StytchOtp,
+      },
+    ],
+    jsParams: {
+      toSign: ethers.utils.arrayify(
+        ethers.utils.keccak256(new TextEncoder().encode(toSign))
+      ),
+      publicKey: pkp.publicKey,
+      sigName: "sig1",
+    },
+  });
+  console.log(results);
+  return [results.response, results.signatures];
+}
+
 export async function addPermittedAuthMethod(
-  sessionSigs: SessionSigs,
+  authMethod: AuthMethod,
   pkp: IRelayPKP
 ) {
   const pkpWallet = new PKPEthersWallet({
-    controllerSessionSigs: sessionSigs,
+    controllerAuthSig: await constructAuthSig(),
+    // controllerAuthMethods: [authMethod], // Passing this param errors
     litActionIPFS: import.meta.env.VITE_ACTION_CODE_IPFS_ID,
     litNetwork: "cayenne",
     pkpPubKey: pkp.publicKey,
   });
+
+  pkpWallet.useAction = true;
   console.log("pkpWallet.address::", pkpWallet.address);
   await pkpWallet.init();
 
@@ -109,7 +144,6 @@ export async function addPermittedAuthMethod(
     signer: pkpWallet,
   });
   await litContracts.connect();
-
   const newAuthMethod: LibPKPPermissionsStorage.AuthMethodStruct = {
     authMethodType: AuthMethodType.StytchOtp,
     id: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("test")),
@@ -121,14 +155,10 @@ export async function addPermittedAuthMethod(
       newAuthMethod,
       [ethers.BigNumber.from("2")]
     );
-
   console.log("mockTransaction:: ", mockTransaction);
-
   // Then, estimate gas on the unsigned transaction
   const gas = await litContracts.signer.estimateGas(mockTransaction);
-
   console.log("gas:: ", gas);
-
   return await litContracts.pkpPermissionsContract.write.addPermittedAuthMethod(
     pkp.tokenId,
     newAuthMethod,
@@ -141,10 +171,6 @@ export async function addPermittedAuthMethod(
  * Mint a new PKP for current auth method
  */
 export async function mintPKP(authMethod: AuthMethod): Promise<IRelayPKP> {
-  // const pKey = ethers.Wallet.createRandom();
-  // console.log(pKey.address);
-  // console.log(pKey.privateKey);
-
   const provider = getProviderByAuthMethod(authMethod);
   if (!provider) throw new Error("provider undefined");
 
@@ -152,17 +178,17 @@ export async function mintPKP(authMethod: AuthMethod): Promise<IRelayPKP> {
   const ipfsId = decode(import.meta.env.VITE_ACTION_CODE_IPFS_ID);
 
   const claimArgs: PKPHelper.AuthMethodDataStruct = {
-    permittedAddresses: [], //address[] permittedAddresses;
-    permittedAddressScopes: [], //uint256[][] permittedAddressScopes;
-    keyType: ethers.BigNumber.from("2"), //uint256 keyType;
-    permittedAuthMethodIds: [authMethodId], //bytes[] permittedAuthMethodIds;
-    permittedAuthMethodTypes: [AuthMethodType.StytchOtp], //uint256[] permittedAuthMethodTypes;
-    permittedAuthMethodPubkeys: ["0x"], //bytes[] permittedAuthMethodPubkeys;
-    permittedAuthMethodScopes: [[ethers.BigNumber.from("1")]], //uint256[][] permittedAuthMethodScopes;
+    permittedAddresses: [],
+    permittedAddressScopes: [],
+    keyType: ethers.BigNumber.from("2"),
+    permittedAuthMethodIds: [authMethodId],
+    permittedAuthMethodTypes: [AuthMethodType.StytchOtp],
+    permittedAuthMethodPubkeys: ["0x"],
+    permittedAuthMethodScopes: [[ethers.BigNumber.from("0")]],
     permittedIpfsCIDs: [`0x${Buffer.from(ipfsId).toString("hex")}`],
     permittedIpfsCIDScopes: [[ethers.BigNumber.from("1")]],
-    addPkpEthAddressAsPermittedAddress: false, //bool addPkpEthAddressAsPermittedAddress;
-    sendPkpToItself: true, //bool sendPkpToItself;
+    addPkpEthAddressAsPermittedAddress: false,
+    sendPkpToItself: true,
   };
 
   console.log("claimArgs: ", claimArgs);
@@ -230,4 +256,37 @@ function getProviderByAuthMethod(authMethod: AuthMethod) {
     default:
       return;
   }
+}
+
+export async function constructAuthSig() {
+  // Initialize the signer
+  const wallet = new ethers.Wallet(import.meta.env.VITE_ETH_PRIVATE_KEY);
+  const address = ethers.utils.getAddress(await wallet.getAddress());
+
+  // Craft the SIWE message
+  const domain = "localhost";
+  const origin = "https://localhost/login";
+  const statement =
+    "This is a test statement.  You can put anything you want here.";
+  const siweMessage = new SiweMessage({
+    domain,
+    address: address,
+    statement,
+    uri: origin,
+    version: "1",
+    chainId: 1,
+  });
+  const messageToSign = siweMessage.prepareMessage();
+
+  // Sign the message and format the authSig
+  const signature = await wallet.signMessage(messageToSign);
+
+  const authSig: AuthSig = {
+    sig: signature,
+    derivedVia: "web3.eth.personal.sign",
+    signedMessage: messageToSign,
+    address: address,
+  };
+
+  return authSig;
 }

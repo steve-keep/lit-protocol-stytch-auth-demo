@@ -16,14 +16,11 @@ export default function useAuthenticate() {
       setError(undefined);
       setAuthMethod(undefined);
 
-      console.log(accessToken, userId);
-
       try {
         const result: AuthMethod = await authenticateWithStytch(
           accessToken,
           userId
         );
-        console.log(result);
         setAuthMethod(result);
       } catch (err: unknown) {
         console.log(err);
