@@ -59,10 +59,10 @@ export async function runLitAction(
 ) {
   const toSign = tx ?? "Hello World";
 
-  litNodeClient.connect();
+  await litNodeClient.connect();
 
   const results = await litNodeClient.executeJs({
-    authSig: await constructAuthSig(),
+    // authSig: await constructAuthSig(),
     ipfsId: import.meta.env.VITE_ACTION_CODE_IPFS_ID,
     authMethods: [authMethod],
     jsParams: {
