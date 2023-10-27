@@ -6,9 +6,7 @@ import {
   ClaimRequest,
   ClaimResult,
   ClientClaimProcessor,
-  GetSessionSigsProps,
   IRelayPKP,
-  SessionSigs,
 } from "@lit-protocol/types";
 import { LitContracts } from "@lit-protocol/contracts-sdk";
 import { ethers } from "ethers";
@@ -17,12 +15,6 @@ import { PKPHelper } from "@lit-protocol/contracts-sdk/src/abis/PKPHelper.sol/PK
 import { decode } from "bs58";
 import { LibPKPPermissionsStorage } from "@lit-protocol/contracts-sdk/src/abis/PKPPermissions.sol/PKPPermissions";
 import { SiweMessage } from "siwe";
-
-export const DOMAIN = process.env.NEXT_PUBLIC_DOMAIN || "localhost";
-export const ORIGIN =
-  process.env.NEXT_PUBLIC_VERCEL_ENV === "production"
-    ? `https://${DOMAIN}`
-    : `http://${DOMAIN}:3000`;
 
 const litNodeClient = new LitNodeClientNodeJs({
   litNetwork: "cayenne",
@@ -51,40 +43,6 @@ export async function authenticateWithStytch(
 }
 
 /**
- * Generate session sigs for given params
- */
-export async function getSessionSigs({
-  pkpPublicKey,
-  authMethod,
-  sessionSigsParams,
-}: {
-  pkpPublicKey: string;
-  authMethod: AuthMethod;
-  sessionSigsParams: GetSessionSigsProps;
-}): Promise<SessionSigs> {
-  const provider = getProviderByAuthMethod(authMethod);
-  if (provider) {
-    const sessionSigs = await provider.getSessionSigs({
-      pkpPublicKey,
-      authMethod,
-      sessionSigsParams,
-    });
-    return sessionSigs;
-  } else {
-    throw new Error(
-      `Provider not found for auth method type ${authMethod.authMethodType}`
-    );
-  }
-}
-
-export async function updateSessionSigs(
-  params: GetSessionSigsProps
-): Promise<SessionSigs> {
-  const sessionSigs = await litNodeClient.getSessionSigs(params);
-  return sessionSigs;
-}
-
-/**
  * Fetch PKPs associated with given auth method
  */
 export async function getPKPs(authMethod: AuthMethod): Promise<IRelayPKP[]> {
@@ -99,19 +57,12 @@ export async function runLitAction(
   pkp: IRelayPKP,
   tx?: string
 ) {
-  const litNodeClient = new LitNodeClient({ litNetwork: "cayenne" });
-  await litNodeClient.connect();
-
   const toSign = tx ?? "Hello World";
+
   const results = await litNodeClient.executeJs({
     authSig: await constructAuthSig(),
     ipfsId: import.meta.env.VITE_ACTION_CODE_IPFS_ID,
-    authMethods: [
-      {
-        accessToken: authMethod.accessToken,
-        authMethodType: AuthMethodType.StytchOtp,
-      },
-    ],
+    authMethods: [authMethod],
     jsParams: {
       toSign: ethers.utils.arrayify(
         ethers.utils.keccak256(new TextEncoder().encode(toSign))
@@ -121,6 +72,7 @@ export async function runLitAction(
     },
   });
   console.log(results);
+
   return [results.response, results.signatures];
 }
 
@@ -128,6 +80,7 @@ export async function addPermittedAuthMethod(
   authMethod: AuthMethod,
   pkp: IRelayPKP
 ) {
+  // 1. Setup the wallet
   const pkpWallet = new PKPEthersWallet({
     controllerAuthSig: await constructAuthSig(),
     // controllerAuthMethods: [authMethod], // Passing this param errors
@@ -136,19 +89,25 @@ export async function addPermittedAuthMethod(
     pkpPubKey: pkp.publicKey,
   });
 
+  // 2. Ensure the wallet signs using the action code
   pkpWallet.useAction = true;
   console.log("pkpWallet.address::", pkpWallet.address);
   await pkpWallet.init();
 
+  // 3. Connect to the contracts
   const litContracts = new LitContracts({
     signer: pkpWallet,
   });
   await litContracts.connect();
+
+  // 4. Prepare the auth method payload
   const newAuthMethod: LibPKPPermissionsStorage.AuthMethodStruct = {
     authMethodType: AuthMethodType.StytchOtp,
     id: ethers.utils.keccak256(ethers.utils.toUtf8Bytes("test")),
     userPubkey: "0x",
   };
+
+  // 5. Prepare the mock transaction to estimate gas
   const mockTransaction =
     await litContracts.pkpPermissionsContract.write.populateTransaction.addPermittedAuthMethod(
       pkp.tokenId,
@@ -156,9 +115,10 @@ export async function addPermittedAuthMethod(
       [ethers.BigNumber.from("2")]
     );
   console.log("mockTransaction:: ", mockTransaction);
-  // Then, estimate gas on the unsigned transaction
   const gas = await litContracts.signer.estimateGas(mockTransaction);
   console.log("gas:: ", gas);
+
+  // 6. Add the auth method by sending the transaction
   return await litContracts.pkpPermissionsContract.write.addPermittedAuthMethod(
     pkp.tokenId,
     newAuthMethod,
