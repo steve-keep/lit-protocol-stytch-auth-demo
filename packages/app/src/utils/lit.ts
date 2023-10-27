@@ -186,7 +186,10 @@ export async function mintPKP(authMethod: AuthMethod): Promise<IRelayPKP> {
   };
   const res = await provider.claimKeyId(claimReq);
 
-  console.log("mint tx hash: ", res.mintTx);
+  console.log(
+    "mint tx hash: ",
+    `https://lit-protocol.calderaexplorer.xyz/tx/${res.mintTx}`
+  );
   console.log("pkp public key: ", res.pubkey);
 
   console.log(res);

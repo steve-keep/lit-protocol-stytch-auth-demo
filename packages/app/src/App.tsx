@@ -34,12 +34,14 @@ const config = {
 function App() {
   const [results, setResults] = useState<string>("");
   const [signatures, setSignatures] = useState<string>("");
+  const [hash, setHash] = useState<string>("");
   const { user } = useStytchUser();
   const stytchClient = useStytch();
   const { session } = useStytchSession();
 
   const { authMethod, authWithLitUsingStytch } = useAuthenticate();
-  const { currentAccount, fetchAccounts, createAccount } = useAccounts();
+  const { currentAccount, fetchAccounts, createAccount, loading } =
+    useAccounts();
 
   // 1. watch for login to stytch
   useEffect(() => {
@@ -65,6 +67,7 @@ function App() {
   }, [authMethod, fetchAccounts]);
 
   if (!user) return <StytchLogin config={config} />;
+  if (loading) return <div>Loading...</div>;
 
   const handleRunLitAction = async () => {
     if (authMethod && currentAccount?.publicKey) {
@@ -81,6 +84,7 @@ function App() {
         currentAccount
       );
 
+      setHash(transaction.hash);
       setResults(JSON.stringify(transaction, null, 2));
       setSignatures("");
     }
@@ -97,22 +101,41 @@ function App() {
   return (
     <>
       <div className="card">
-        <p>
-          <button onClick={handleClaim}>Mint My PKP</button>
-        </p>
-        <p>
-          <button onClick={handleRunLitAction}>Check Rules</button>
-        </p>
-        <p>
-          <button onClick={handleRunTx}>Add Auth Method</button>
-        </p>
-        <p>
-          <LogOutButton />
-        </p>
-        <h3>Response</h3>
+        <div className="menu">
+          {currentAccount ? (
+            <>
+              <p>
+                <button onClick={handleRunLitAction}>Check Permissions</button>
+              </p>
+              <p>
+                <button onClick={handleRunTx}>Add New Auth Method</button>
+              </p>
+            </>
+          ) : (
+            <p>
+              <button onClick={handleClaim}>Claim & Mint</button>
+            </p>
+          )}
+          <p>
+            <LogOutButton />
+          </p>
+        </div>
+        <h3>Response:</h3>
         <pre id="json">{results}</pre>
-        <h3>Signatures</h3>
+        <h3>Signatures:</h3>
         <pre id="json">{signatures}</pre>
+        <h3>PKP:</h3>
+        {currentAccount && (
+          <pre id="json">{JSON.stringify(currentAccount, null, 2)}</pre>
+        )}
+        {hash && (
+          <a
+            href={`https://lit-protocol.calderaexplorer.xyz/tx/${hash}`}
+            target="_blank"
+          >
+            View TX
+          </a>
+        )}
       </div>
     </>
   );
