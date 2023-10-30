@@ -98,6 +98,16 @@ function App() {
     }
   };
 
+  const handleAddWebauthn = async () => {
+    stytchClient.webauthn.register();
+  };
+
+  const handleAuthWithWebauthn = async () => {
+    stytchClient.webauthn.authenticate({
+      session_duration_minutes: 60,
+    });
+  };
+
   return (
     <>
       <div className="card">
@@ -109,6 +119,14 @@ function App() {
               </p>
               <p>
                 <button onClick={handleRunTx}>Add New Auth Method</button>
+              </p>
+              <p>
+                <button onClick={handleAddWebauthn}>Add Webauthn</button>
+              </p>
+              <p>
+                <button onClick={handleAuthWithWebauthn}>
+                  Auth With Webauthn
+                </button>
               </p>
             </>
           ) : (
