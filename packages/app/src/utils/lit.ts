@@ -62,7 +62,7 @@ export async function runLitAction(
   await litNodeClient.connect();
 
   const results = await litNodeClient.executeJs({
-    // authSig: await constructAuthSig(),
+    authSig: await constructAuthSig(),
     ipfsId: import.meta.env.VITE_ACTION_CODE_IPFS_ID,
     authMethods: [authMethod],
     jsParams: {
@@ -85,7 +85,7 @@ export async function addPermittedAuthMethod(
   // 1. Setup the wallet
   const pkpWallet = new PKPEthersWallet({
     controllerAuthSig: await constructAuthSig(),
-    // controllerAuthMethods: [authMethod], // Passing this param errors
+    controllerAuthMethods: [authMethod], // Passing this param errors
     litActionIPFS: import.meta.env.VITE_ACTION_CODE_IPFS_ID,
     litNetwork: "cayenne",
     pkpPubKey: pkp.publicKey,
