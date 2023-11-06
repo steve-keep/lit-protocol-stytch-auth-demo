@@ -71,6 +71,7 @@ export async function runLitAction(
       ),
       publicKey: pkp.publicKey,
       sigName: "sig1",
+      operation: "addPermittedLitAction",
     },
   });
   console.log(results);

@@ -33,3 +33,4 @@ https://developer.litprotocol.com/v3/sdk/authentication/session-sigs/auth-method
 https://github.com/LIT-Protocol/LitNodeContracts/blob/main/contracts/PKPPermissions.sol
 https://chronicle-faucet-app.vercel.app/
 https://lit-protocol.calderaexplorer.xyz/tx/0x5af0af84d89250022bb35af919ebc0c8f5e95e11e8f5d672d26f7ef36daf1e49
+https://actions-docs.litprotocol.com/#call
